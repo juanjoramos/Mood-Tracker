@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'vistas/mood_input.dart';
 import 'vistas/reminder.dart';
 import 'vistas/calendar.dart';
+import 'vistas/weekly_mood_chart.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {
+void main() async {  
+  
+  // Inicializa para español
+  await initializeDateFormatting('es_ES', null);
   runApp(const MyApp());
 }
 
@@ -14,47 +19,68 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const HomeScreen(),
-        '/mood_input': (context) => const MoodInputScreen(),
-        '/calendar': (context) => const CalendarScreen(),
-        '/reminders': (context) => const ReminderScreen(),
-      },
+      theme: ThemeData(
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,       // color de fondo de la barra
+          selectedItemColor: Colors.green,     // ícono/texto del ítem activo
+          unselectedItemColor: Colors.grey,    // íconos/textos inactivos
+        ),
+      ),
+      home: const MainNavigation(), // 👈 arrancamos con la navegación
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class MainNavigation extends StatefulWidget {
+  const MainNavigation({super.key});
+
+  @override
+  State<MainNavigation> createState() => _MainNavigationState();
+}
+
+class _MainNavigationState extends State<MainNavigation> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = const [
+    MoodInputScreen(),   // índice 0 → pantalla inicial    
+    CalendarScreen(),    // índice 2
+    MoodStatsScreen(),   // índice 3 → 📊 estadísticas
+    ReminderScreen(),    // índice 1
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.green,
-        title: const Text("Mood Tracker"),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/mood_input'),
-              child: const Text("Ir a Mood Input"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/reminders'),
-              child: const Text("Ir a Recordatorios"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/calendar'),
-              child: const Text("Ir al Calendario"),
-            ),
-          ],
-        ),
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed, // 👈 evita animaciones raras con 4+ items
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_emotions),
+            label: 'Estado Ánimo',
+          ),
+          
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Calendario',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Estadísticas',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.alarm),
+            label: 'Recordatorios',
+          ),
+        ],
       ),
     );
   }

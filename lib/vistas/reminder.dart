@@ -40,7 +40,7 @@ class _ReminderScreenState extends State<ReminderScreen> {
         ),
       ),
 
-      bottomNavigationBar: _ReminderBottomNav(),
+  
     );
   }
 }
@@ -96,20 +96,3 @@ class _ReminderTimePicker extends StatelessWidget {
   }
 }
 
-///Bottom navigation
-class _ReminderBottomNav extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BottomNavigationBar(
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
-        BottomNavigationBarItem(icon: Icon(Icons.favorite), label: "Saved"),
-        BottomNavigationBarItem(icon: Icon(Icons.menu), label: "Menu"),
-      ],
-      //onTap: (index) {
-      //if (index == 0) Navigator.pushNamed(context, '/');
-      //if (index == 2) Navigator.pushNamed(context, '/calendar');
-      //},
-    );
-  }
-}
