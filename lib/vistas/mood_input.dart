@@ -66,7 +66,7 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
       backgroundColor: Colors.grey.shade100,
       body: Column(
         children: [
-          // 🌈 Banner superior con degradado
+          // Banner superior con degradado
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(top: 60, bottom: 30),
