@@ -1,4 +1,3 @@
-// lib/vistas/mood_stats.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,9 +10,9 @@ class MoodStatsScreen extends StatefulWidget {
 }
 
 class _MoodStatsScreenState extends State<MoodStatsScreen> {
-  Map<String, String> moods = {}; // { "YYYY-MM-DD": "Feliz", ... }
-  List<double?> averages = List<double?>.filled(7, null); // lunes..domingo
-  DateTimeRange? _selectedRange; // rango de fechas elegido
+  Map<String, String> moods = {};
+  List<double?> averages = List<double?>.filled(7, null);
+  DateTimeRange? _selectedRange;
 
   @override
   void initState() {
@@ -39,7 +38,6 @@ class _MoodStatsScreenState extends State<MoodStatsScreen> {
     });
   }
 
-  // Convierte la emoción a un valor numérico (0..4)
   double _moodToValue(String mood) {
     switch (mood) {
       case "Muy Triste":
@@ -57,7 +55,6 @@ class _MoodStatsScreenState extends State<MoodStatsScreen> {
     }
   }
 
-  // Calcula el promedio para cada día de la semana considerando el rango
   List<double?> _averageByWeekday(Map<String, String> entries) {
     final buckets = List<List<double>>.generate(7, (_) => []);
     entries.forEach((dateStr, mood) {
@@ -69,26 +66,22 @@ class _MoodStatsScreenState extends State<MoodStatsScreen> {
         final d = int.parse(parts[2]);
         final dt = DateTime(y, m, d);
 
-        // Si hay rango seleccionado, filtramos
         if (_selectedRange != null) {
-          if (dt.isBefore(_selectedRange!.start) || dt.isAfter(_selectedRange!.end)) {
+          if (dt.isBefore(_selectedRange!.start) ||
+              dt.isAfter(_selectedRange!.end)) {
             return;
           }
         }
 
-        final idx = dt.weekday - 1; // lunes=0 .. domingo=6
+        final idx = dt.weekday - 1;
         final value = _moodToValue(mood);
         buckets[idx].add(value);
       } catch (_) {}
     });
 
-    // promedio por bucket
     return buckets.map((list) {
       if (list.isEmpty) return null;
-      double sum = 0.0;
-      for (final v in list) {
-        sum += v;
-      }
+      double sum = list.reduce((a, b) => a + b);
       return sum / list.length;
     }).toList();
   }
@@ -116,9 +109,13 @@ class _MoodStatsScreenState extends State<MoodStatsScreen> {
     final hasAny = averages.any((e) => e != null);
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: const Text('📊 Estadísticas semanales'),
-        backgroundColor: Colors.green,
+       title: const Text(
+          "📊 Estadísticas semanales",
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.grey.shade100,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -132,41 +129,100 @@ class _MoodStatsScreenState extends State<MoodStatsScreen> {
         child: hasAny
             ? Column(
                 children: [
-                  const Text(
-                    'Promedio emocional por día de la semana\n(la barra muestra el promedio y el emoji el estado resultante)',
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 📌 Botón para seleccionar rango de fechas
-                  ElevatedButton.icon(
-                    onPressed: _pickDateRange,
-                    icon: const Icon(Icons.date_range),
-                    label: Text(
-                      _selectedRange == null
-                          ? "Seleccionar rango de fechas"
-                          : "${_selectedRange!.start.day}/${_selectedRange!.start.month} "
-                            " - ${_selectedRange!.end.day}/${_selectedRange!.end.month}",
+                  // 📌 Nuevo banner con diseño mejorado
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.teal.shade400, Colors.teal.shade700],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.insights,
+                            size: 40, color: Colors.white),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Tu resumen emocional",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _selectedRange == null
+                                    ? "Selecciona un rango para ver tendencias"
+                                    : "Del ${_selectedRange!.start.day}/${_selectedRange!.start.month} "
+                                      "al ${_selectedRange!.end.day}/${_selectedRange!.end.month}",
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _pickDateRange,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.teal.shade700,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.date_range),
+                          label: const Text("Rango"),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 18),
-                  // Chart area
+                  // 📊 Chart en tarjeta
                   Expanded(
-                    child: WeeklyMoodBarChart(values: averages),
+                    child: Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: WeeklyMoodBarChart(values: averages),
+                      ),
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  // Leyenda compacta
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: const [
-                      Text('😭 Muy triste'),
-                      Text('😢 Triste'),
-                      Text('😐 Neutral'),
-                      Text('🙂 Feliz'),
-                      Text('😁 Muy feliz'),
+                  const SizedBox(height: 10),
+
+                  // Leyenda
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    children: [
+                      _buildLegend("😁 Muy Feliz", Colors.yellow.shade600),
+                      _buildLegend("🙂 Feliz", Colors.green.shade500),
+                      _buildLegend("😐 Neutral", Colors.grey.shade400),
+                      _buildLegend("😢 Triste", Colors.lightBlue.shade400),
+                      _buildLegend("😭 Muy Triste", Colors.red.shade400),
                     ],
-                  ),
+                  )
                 ],
               )
             : Center(
@@ -183,12 +239,21 @@ class _MoodStatsScreenState extends State<MoodStatsScreen> {
       ),
     );
   }
+
+  Widget _buildLegend(String text, Color color) {
+    return Chip(
+      backgroundColor: color,
+      label: Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 }
 
-/// Widget que dibuja 7 barras (lunes..domingo) con emoji encima.
-/// No muestra números para una estética limpia.
+/// Gráfico semanal de moods (lunes..domingo).
 class WeeklyMoodBarChart extends StatelessWidget {
-  final List<double?> values; // length 7, lunes..domingo
+  final List<double?> values;
   final double maxValue;
   final double maxBarHeight;
   final double barWidth;
@@ -198,7 +263,7 @@ class WeeklyMoodBarChart extends StatelessWidget {
     required this.values,
     this.maxValue = 4.0,
     this.maxBarHeight = 180.0,
-    this.barWidth = 26.0,
+    this.barWidth = 28.0,
   }) : assert(values.length == 7);
 
   static const weekdayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -214,8 +279,11 @@ class WeeklyMoodBarChart extends StatelessWidget {
 
   Color _colorForValue(double? v) {
     if (v == null) return Colors.grey.shade300;
-    final t = (v / maxValue).clamp(0.0, 1.0);
-    return Color.lerp(Colors.red.shade600, Colors.green.shade600, t)!;
+    if (v < 0.5) return Colors.red.shade400;
+    if (v < 1.5) return Colors.lightBlue.shade400;
+    if (v < 2.5) return Colors.grey.shade500;
+    if (v < 3.5) return Colors.green.shade500;
+    return Colors.yellow.shade600;
   }
 
   @override
@@ -227,7 +295,8 @@ class WeeklyMoodBarChart extends StatelessWidget {
         children: List.generate(7, (i) {
           final v = values[i];
           final t = (v ?? 0) / maxValue;
-          final barHeight = (v == null) ? 8.0 : (t * maxBarHeight).clamp(8.0, maxBarHeight);
+          final barHeight =
+              (v == null) ? 12.0 : (t * maxBarHeight).clamp(12.0, maxBarHeight);
           final color = _colorForValue(v);
           final emoji = _emojiForValue(v);
 
@@ -235,36 +304,30 @@ class WeeklyMoodBarChart extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6.0),
-                  child: Text(emoji, style: const TextStyle(fontSize: 22)),
-                ),
+                Text(emoji, style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 6),
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeOut,
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeOutCubic,
                   height: barHeight,
                   width: barWidth,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        color.withOpacity(0.95),
-                        color.withOpacity(0.75),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
+                    color: color,
+                    borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.25),
-                        blurRadius: 6,
+                        color: color.withOpacity(0.4),
+                        blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text(weekdayLabels[i], style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Text(
+                  weekdayLabels[i],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           );
