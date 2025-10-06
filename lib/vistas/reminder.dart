@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReminderScreen extends StatefulWidget {
   const ReminderScreen({super.key});
@@ -12,40 +13,143 @@ class _ReminderScreenState extends State<ReminderScreen> {
   TimeOfDay reminderTime = const TimeOfDay(hour: 8, minute: 0);
 
   @override
+  void initState() {
+    super.initState();
+    _loadReminderSettings();
+  }
+
+  // Carga los valores guardados de SharedPreferences
+  void _loadReminderSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEnabled = prefs.getBool('reminder_enabled') ?? false;
+    final savedHour = prefs.getInt('reminder_hour') ?? 8;
+    final savedMinute = prefs.getInt('reminder_minute') ?? 0;
+
+    setState(() {
+      enabled = savedEnabled;
+      reminderTime = TimeOfDay(hour: savedHour, minute: savedMinute);
+    });
+  }
+
+  // Guarda el estado del switch
+  void _updateReminderEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('reminder_enabled', value);
+    setState(() => enabled = value);
+  }
+
+  // Guarda la hora seleccionada
+  void _updateReminderTime(TimeOfDay time) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('reminder_hour', time.hour);
+    await prefs.setInt('reminder_minute', time.minute);
+    setState(() => reminderTime = time);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.green,
-        title: const Text(
-          "🔔 Recordatorio",
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-      body: Container(
-        color: Colors.lightBlue[50],
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _ReminderToggle(
-              enabled: enabled,
-              onChanged: (value) => setState(() => enabled = value),
+      backgroundColor: Colors.grey.shade100,
+      body: Column(
+        children: [
+          //Banner con degradado
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(top: 60, bottom: 30),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green, Colors.lightGreen],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
             ),
-            const SizedBox(height: 20),
-            _ReminderTimePicker(
-              reminderTime: reminderTime,
-              onTimePicked: (time) => setState(() => reminderTime = time),
+            child: Column(
+              children: [
+                const Icon(Icons.alarm, size: 60, color: Colors.white),
+                const SizedBox(height: 10),
+                const Text(
+                  "Activa tus recordatorios 🔔",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Te ayudaremos a no olvidar registrar tu estado de ánimo",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
 
-  
+          //Contenido principal
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ReminderToggle(
+                    enabled: enabled,
+                    onChanged: _updateReminderEnabled,
+                  ),
+                  const SizedBox(height: 20),
+                  _ReminderTimePicker(
+                    reminderTime: reminderTime,
+                    onTimePicked: _updateReminderTime,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          //Botón guardar con feedback visual
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: enabled
+                    ? () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Recordatorio guardado ✅'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: enabled ? Colors.green : Colors.grey,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 5,
+                ),
+                icon: const Icon(Icons.save, color: Colors.white),
+                label: const Text(
+                  "Guardar",
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-///Switch para activar/desactivar recordatorio
+/// Switch con estilo
 class _ReminderToggle extends StatelessWidget {
   final bool enabled;
   final ValueChanged<bool> onChanged;
@@ -64,7 +168,7 @@ class _ReminderToggle extends StatelessWidget {
   }
 }
 
-///Selector de hora
+/// Selector de hora con estilo
 class _ReminderTimePicker extends StatelessWidget {
   final TimeOfDay reminderTime;
   final ValueChanged<TimeOfDay> onTimePicked;
@@ -79,9 +183,12 @@ class _ReminderTimePicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Hora del recordatorio:"),
+        const Text(
+          "Hora del recordatorio:",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
         const SizedBox(height: 10),
-        ElevatedButton(
+        ElevatedButton.icon(
           onPressed: () async {
             TimeOfDay? picked = await showTimePicker(
               context: context,
@@ -89,10 +196,18 @@ class _ReminderTimePicker extends StatelessWidget {
             );
             if (picked != null) onTimePicked(picked);
           },
-          child: Text(reminderTime.format(context)),
+          icon: const Icon(Icons.access_time),
+          label: Text(reminderTime.format(context)),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            backgroundColor: Colors.lightGreen,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         ),
       ],
     );
   }
 }
-
