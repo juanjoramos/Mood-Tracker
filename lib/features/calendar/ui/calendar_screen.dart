@@ -1,8 +1,8 @@
-import 'dart:convert';
+// 🎨 UI: Interfaz del calendario, usa CalendarLogic para la parte funcional
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'mood_input.dart';
+import '../../mood_input/ui/mood_input_screen.dart';
+import '../logic/calendar_logic.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -12,9 +12,11 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
+  final _logic = CalendarLogic();
+
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  Map<String, String> moods = {}; // { "yyyy-MM-dd": "Muy Feliz", ... }
+  Map<String, String> moods = {}; // Ej: {"2025-10-15": "Feliz"}
 
   @override
   void initState() {
@@ -24,69 +26,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadMoods();
   }
 
-  // Carga moods desde SharedPreferences
   Future<void> _loadMoods() async {
-    final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getString("moods");
-    if (stored != null && stored.isNotEmpty) {
-      setState(() {
-        moods = Map<String, String>.from(json.decode(stored));
-      });
-    } else {
-      setState(() {
-        moods = {};
-      });
-    }
+    final data = await _logic.getMoods();
+    setState(() => moods = data);
   }
 
-  Color _getMoodColor(String? mood) {
-    switch (mood) {
-      case "Muy Feliz":
-        return Colors.yellow.shade600;
-      case "Feliz":
-        return Colors.green.shade500;
-      case "Neutral":
-        return Colors.grey.shade400;
-      case "Triste":
-        return Colors.lightBlue.shade400;
-      case "Muy Triste":
-        return Colors.red.shade400;
-      default:
-        return Colors.transparent;
-    }
-  }
-
-  // Abrir MoodInput y, al regresar, recargar moods y seleccionar la fecha editada
   Future<void> _openMoodInput(DateTime date, String? currentMood) async {
-    final updatedMood = await Navigator.push(
+    final updated = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MoodInputScreen(
-          initialMood: currentMood,
-          selectedDate: date,
-        ),
+        builder: (context) =>
+            MoodInputScreen(initialMood: currentMood, selectedDate: date),
       ),
     );
 
-    if (updatedMood != null) {
+    if (updated != null) {
       await _loadMoods();
       setState(() {
-        // Seleccionamos y enfocamos la fecha que acabamos de editar (no hoy por fuerza)
         _selectedDay = date;
         _focusedDay = date;
       });
     }
   }
 
-  // Utilidad para convertir DateTime -> "yyyy-MM-dd"
-  String _dateKey(DateTime d) =>
-      "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
-
   @override
   Widget build(BuildContext context) {
-    final selectedKey =
-        _selectedDay != null ? _dateKey(_selectedDay!) : null; 
-    final selectedMood = selectedKey != null ? moods[selectedKey] : null;
+    final key = _selectedDay != null ? _logic.dateKey(_selectedDay!) : null;
+    final mood = key != null ? moods[key] : null;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
@@ -103,27 +69,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Leyenda (chips suaves)
+            // 🌈 Leyenda de colores
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 10,
               runSpacing: 8,
               children: [
-                _buildLegend("Muy Feliz", Colors.yellow.shade600),
-                _buildLegend("Feliz", Colors.green.shade500),
-                _buildLegend("Neutral", Colors.grey.shade400),
-                _buildLegend("Triste", Colors.lightBlue.shade400),
-                _buildLegend("Muy Triste", Colors.red.shade400),
+                _legend("Muy Feliz", Colors.yellow.shade600),
+                _legend("Feliz", Colors.green.shade500),
+                _legend("Neutral", Colors.grey.shade400),
+                _legend("Triste", Colors.lightBlue.shade400),
+                _legend("Muy Triste", Colors.red.shade400),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Calendario en tarjeta
+            // 📆 Calendario principal
             Expanded(
               child: Card(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                    borderRadius: BorderRadius.circular(16)),
                 elevation: 4,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -131,82 +96,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     firstDay: DateTime.utc(2020, 1, 1),
                     lastDay: DateTime.utc(2030, 12, 31),
                     focusedDay: _focusedDay,
-                    // El día seleccionado es _selectedDay
                     selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
 
-                    // Al seleccionar un día simplemente lo marcamos (no cambiamos colores)
+                    // 🧠 Bloquear días futuros
+                    enabledDayPredicate: (day) {
+                      final now = DateTime.now();
+                      return !day.isAfter(
+                        DateTime(now.year, now.month, now.day),
+                      );
+                    },
+
                     onDaySelected: (selected, focused) {
+                      // Evitar seleccionar días futuros
+                      if (selected.isAfter(DateTime.now())) return;
+
                       setState(() {
                         _selectedDay = selected;
                         _focusedDay = focused;
                       });
                     },
 
-                    // Ocultamos control de formato ("2 weeks")
                     headerStyle: const HeaderStyle(
                       formatButtonVisible: false,
                       titleCentered: true,
                       titleTextStyle:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
+                    calendarStyle:
+                        const CalendarStyle(isTodayHighlighted: false),
 
-                    calendarStyle: const CalendarStyle(
-                      isTodayHighlighted: false, // evitamos color por defecto en "hoy"
-                    ),
-
-                    // Construcción personalizada de celdas
+                    // 🎨 Personalización de las celdas
                     calendarBuilders: CalendarBuilders(
-                      // Builder general para cada día
                       defaultBuilder: (context, day, focusedDay) {
-                        final key = _dateKey(day);
+                        final key = _logic.dateKey(day);
                         final mood = moods[key];
                         final bool isSelected = isSameDay(_selectedDay, day);
 
-                        // Si hay mood -> fondo del color del mood; si no -> blanco
-                        final backgroundColor =
-                            mood != null ? _getMoodColor(mood) : Colors.white;
-
-                        return Container(
-                          margin: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: backgroundColor,
-                            shape: BoxShape.circle,
-                            border: isSelected
-                                ? Border.all(color: Colors.black, width: 2)
-                                : null, // borde negro si está seleccionado
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            "${day.day}",
-                            style: TextStyle(
-                              // si hay mood, número en blanco; si no, negro
-                              color: mood != null ? Colors.white : Colors.black87,
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        );
-                      },
-
-                      // Para asegurar la misma apariencia en selected (opcional)
-                      selectedBuilder: (context, day, focusedDay) {
-                        final key = _dateKey(day);
-                        final mood = moods[key];
-                        final bg = mood != null ? _getMoodColor(mood) : Colors.white;
+                        final bg = mood != null
+                            ? _logic.getMoodColor(mood)
+                            : Colors.white;
 
                         return Container(
                           margin: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: bg,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black, width: 2),
+                            border: isSelected
+                                ? Border.all(color: Colors.black, width: 3)
+                                : null,
                           ),
                           alignment: Alignment.center,
                           child: Text(
                             "${day.day}",
                             style: TextStyle(
-                              color: mood != null ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.bold,
+                              color: mood != null
+                                  ? Colors.white
+                                  : Colors.black87,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         );
@@ -217,10 +165,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ),
 
-            // Botón para agregar/editar emoción (minimalista)
+            // 🟢 Botón agregar/editar emoción
             if (_selectedDay != null)
               GestureDetector(
-                onTap: () => _openMoodInput(_selectedDay!, selectedMood),
+                onTap: () {
+                  if (_selectedDay!.isAfter(DateTime.now())) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("No puedes registrar emociones futuras."),
+                      ),
+                    );
+                  } else {
+                    _openMoodInput(_selectedDay!, mood);
+                  }
+                },
                 child: Container(
                   margin: const EdgeInsets.only(top: 16),
                   padding:
@@ -242,9 +200,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       const Icon(Icons.edit, color: Colors.white),
                       const SizedBox(width: 10),
                       Text(
-                        selectedMood == null
+                        mood == null
                             ? "Agregar emoción"
-                            : "Editar emoción ($selectedMood)",
+                            : "Editar emoción ($mood)",
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -260,16 +218,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildLegend(String text, Color color) {
+  Widget _legend(String text, Color color) {
     return Chip(
       backgroundColor: color,
       label: Text(
         text,
         style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
+            color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }

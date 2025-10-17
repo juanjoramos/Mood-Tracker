@@ -1,8 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart';
+import '../logic/mood_controller.dart';
 
 class MoodInputScreen extends StatefulWidget {
   final String? initialMood;
@@ -19,7 +17,7 @@ class MoodInputScreen extends StatefulWidget {
 }
 
 class _MoodInputScreenState extends State<MoodInputScreen> {
-  String? selectedMood;
+  late MoodController controller;
 
   final Map<String, Map<String, dynamic>> moodOptions = {
     "Muy Feliz": {"emoji": "😁", "color": Colors.yellow.shade700},
@@ -32,27 +30,38 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
   @override
   void initState() {
     super.initState();
-    selectedMood = widget.initialMood;
+    controller = MoodController(moodOptions);
+    controller.selectedMood = widget.initialMood;
   }
 
   Future<void> _saveMood() async {
-    if (selectedMood == null || widget.selectedDate == null) return;
+    if (controller.selectedMood == null || widget.selectedDate == null) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final storedMoods = prefs.getString("moods");
-    Map<String, String> moods = {};
+    await controller.saveMood(widget.selectedDate!);
 
-    if (storedMoods != null) {
-      moods = Map<String, String>.from(json.decode(storedMoods));
+    // ✅ Mostrar mensaje de confirmación
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            "✅ Tu estado de ánimo ha sido guardado correctamente",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+          ),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        ),
+      );
     }
 
-    final dateKey = DateFormat("yyyy-MM-dd").format(widget.selectedDate!);
+    // Espera un poco para mostrar el mensaje antes de cerrar
+    await Future.delayed(const Duration(milliseconds: 800));
 
-    moods[dateKey] = selectedMood!;
-
-    await prefs.setString("moods", json.encode(moods));
-
-    Navigator.pop(context, selectedMood);
+    if (mounted) {
+      Navigator.pop(context, controller.selectedMood);
+    }
   }
 
   @override
@@ -60,13 +69,14 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
     final dateText = widget.selectedDate != null
         ? DateFormat("EEEE, d 'de' MMMM yyyy", "es_ES")
             .format(widget.selectedDate!)
-        : DateFormat("EEEE, d 'de' MMMM yyyy", "es_ES").format(DateTime.now());
+        : DateFormat("EEEE, d 'de' MMMM yyyy", "es_ES")
+            .format(DateTime.now());
 
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
       body: Column(
         children: [
-          // Banner superior con degradado
+          // 🌈 Banner superior
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(top: 60, bottom: 30),
@@ -116,12 +126,12 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
                   final emoji = entry.value["emoji"];
                   final color = entry.value["color"];
 
-                  final isSelected = selectedMood == mood;
+                  final isSelected = controller.selectedMood == mood;
 
                   return GestureDetector(
                     onTap: () {
                       setState(() {
-                        selectedMood = mood;
+                        controller.selectedMood = mood;
                       });
                     },
                     child: AnimatedContainer(
@@ -160,8 +170,9 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color:
-                                    isSelected ? Colors.white : Colors.black87,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
                               ),
                             ),
                           ],
@@ -174,17 +185,17 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
             ),
           ),
 
-          // 🟢 Botón elegante de guardar al final
+          // 🟢 Botón de guardar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: selectedMood != null ? _saveMood : null,
+                onPressed: controller.selectedMood != null ? _saveMood : null,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor:
-                      selectedMood != null ? Colors.green : Colors.grey,
+                      controller.selectedMood != null ? Colors.green : Colors.grey,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),

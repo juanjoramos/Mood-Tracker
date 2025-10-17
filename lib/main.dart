@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'vistas/mood_input.dart';
-import 'vistas/reminder.dart';
-import 'vistas/calendar.dart';
-import 'vistas/weekly_mood_chart.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-void main() async {  
-  
-  // Inicializa para español
-  await initializeDateFormatting('es_ES', null);
+// Importaciones de tus features
+import 'features/mood_input/ui/mood_input_screen.dart';
+import 'features/calendar/ui/calendar_screen.dart';
+import 'features/weekly_mood/ui/weekly_mood_screen.dart';
+import 'features/reminder/ui/reminder_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es_ES', null); // 🗓️ Inicializa formato de fechas
   runApp(const MyApp());
 }
 
@@ -21,12 +22,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,       // color de fondo de la barra
-          selectedItemColor: Colors.green,     // ícono/texto del ítem activo
-          unselectedItemColor: Colors.grey,    // íconos/textos inactivos
+          backgroundColor: Colors.white,
+          selectedItemColor: Colors.green,
+          unselectedItemColor: Colors.grey,
         ),
       ),
-      home: const MainNavigation(), // 👈 arrancamos con la navegación
+      home: const MainNavigation(), // 👈 inicia con la navegación completa
     );
   }
 }
@@ -39,15 +40,17 @@ class MainNavigation extends StatefulWidget {
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 1; // 👈 Arranca en el índice del calendario
 
+  // Lista de pantallas disponibles
   final List<Widget> _screens = const [
-    MoodInputScreen(),   // índice 0 → pantalla inicial    
-    CalendarScreen(),    // índice 2
-    MoodStatsScreen(),   // índice 3 → 📊 estadísticas
-    ReminderScreen(),    // índice 1
+    MoodInputScreen(),   // índice 0 → Estado de ánimo
+    CalendarScreen(),    // índice 1 → Calendario (inicio)
+    MoodStatsScreen(),   // índice 2 → Estadísticas
+    ReminderScreen(),    // índice 3 → Recordatorios
   ];
 
+  // Controla el cambio de pestaña
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -58,8 +61,9 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _screens[_selectedIndex],
+
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // 👈 evita animaciones raras con 4+ items
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: const [
@@ -67,7 +71,6 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: Icon(Icons.emoji_emotions),
             label: 'Estado Ánimo',
           ),
-          
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_today),
             label: 'Calendario',
