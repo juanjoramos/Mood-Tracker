@@ -31,23 +31,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() => moods = data);
   }
 
-  Future<void> _openMoodInput(DateTime date, String? currentMood) async {
-    final updated = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            MoodInputScreen(initialMood: currentMood, selectedDate: date),
+ Future<void> _openMoodInput(DateTime date, String? currentMood) async {
+  final refreshed = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => MoodInputScreen(
+        initialMood: currentMood,
+        selectedDate: date,
       ),
-    );
+    ),
+  );
 
-    if (updated != null) {
-      await _loadMoods();
-      setState(() {
-        _selectedDay = date;
-        _focusedDay = date;
-      });
-    }
+  // ✅ Si se devolvió "true" (guardado exitoso), recargamos los moods
+  if (refreshed == true) {
+    await _loadMoods();
+    setState(() {
+      _selectedDay = date;
+      _focusedDay = date;
+    });
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -85,85 +89,112 @@ class _CalendarScreenState extends State<CalendarScreen> {
             const SizedBox(height: 16),
 
             // 📆 Calendario principal
-            Expanded(
-              child: Card(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TableCalendar(
-                    firstDay: DateTime.utc(2020, 1, 1),
-                    lastDay: DateTime.utc(2030, 12, 31),
-                    focusedDay: _focusedDay,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            // 📆 Calendario principal
+Expanded(
+  child: Card(
+    shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16)),
+    elevation: 4,
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: TableCalendar(
+        firstDay: DateTime.utc(2020, 1, 1),
+        lastDay: DateTime.utc(2030, 12, 31),
+        focusedDay: _focusedDay,
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
 
-                    // 🧠 Bloquear días futuros
-                    enabledDayPredicate: (day) {
-                      final now = DateTime.now();
-                      return !day.isAfter(
-                        DateTime(now.year, now.month, now.day),
-                      );
-                    },
+        // 🧠 Bloquear días futuros
+        enabledDayPredicate: (day) {
+          final now = DateTime.now();
+          return !day.isAfter(
+            DateTime(now.year, now.month, now.day),
+          );
+        },
 
-                    onDaySelected: (selected, focused) {
-                      // Evitar seleccionar días futuros
-                      if (selected.isAfter(DateTime.now())) return;
+        onDaySelected: (selected, focused) {
+          if (selected.isAfter(DateTime.now())) return;
+          setState(() {
+            _selectedDay = selected;
+            _focusedDay = focused;
+          });
+        },
 
-                      setState(() {
-                        _selectedDay = selected;
-                        _focusedDay = focused;
-                      });
-                    },
+        headerStyle: const HeaderStyle(
+          formatButtonVisible: false,
+          titleCentered: true,
+          titleTextStyle:
+              TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
 
-                    headerStyle: const HeaderStyle(
-                      formatButtonVisible: false,
-                      titleCentered: true,
-                      titleTextStyle:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    calendarStyle:
-                        const CalendarStyle(isTodayHighlighted: false),
+        // 🎨 Estilo general del calendario
+        calendarStyle: const CalendarStyle(
+          isTodayHighlighted: false, // quita el azul de hoy
+          outsideDaysVisible: false,
+          selectedDecoration: BoxDecoration(
+            color: Colors.transparent,
+            shape: BoxShape.circle,
+          ),
+        ),
 
-                    // 🎨 Personalización de las celdas
-                    calendarBuilders: CalendarBuilders(
-                      defaultBuilder: (context, day, focusedDay) {
-                        final key = _logic.dateKey(day);
-                        final mood = moods[key];
-                        final bool isSelected = isSameDay(_selectedDay, day);
+        // 🎨 Personalización completa de las celdas
+        calendarBuilders: CalendarBuilders(
+          // 🔹 Celdas normales
+          defaultBuilder: (context, day, focusedDay) {
+            final key = _logic.dateKey(day);
+            final mood = moods[key];
+            final bool isSelected = isSameDay(_selectedDay, day);
 
-                        final bg = mood != null
-                            ? _logic.getMoodColor(mood)
-                            : Colors.white;
+            final bg = mood != null ? _logic.getMoodColor(mood) : Colors.white;
 
-                        return Container(
-                          margin: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: bg,
-                            shape: BoxShape.circle,
-                            border: isSelected
-                                ? Border.all(color: Colors.black, width: 3)
-                                : null,
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            "${day.day}",
-                            style: TextStyle(
-                              color: mood != null
-                                  ? Colors.white
-                                  : Colors.black87,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+            return Container(
+              margin: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: bg,
+                shape: BoxShape.circle,
+                border: isSelected
+                    ? Border.all(color: Colors.black, width: 3)
+                    : null,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                "${day.day}",
+                style: TextStyle(
+                  color: mood != null ? Colors.white : Colors.black87,
+                  fontWeight:
+                      isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
-            ),
+            );
+          },
+
+          // 🔸 Día seleccionado (borde negro, mantiene color del mood)
+          selectedBuilder: (context, day, focusedDay) {
+            final key = _logic.dateKey(day);
+            final mood = moods[key];
+            final bg = mood != null ? _logic.getMoodColor(mood) : Colors.white;
+
+            return Container(
+              margin: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: bg, // conserva color de la emoción
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 3),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                "${day.day}",
+                style: TextStyle(
+                  color: mood != null ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    ),
+  ),
+),
 
             // 🟢 Botón agregar/editar emoción
             if (_selectedDay != null)

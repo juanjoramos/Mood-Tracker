@@ -34,34 +34,36 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
     controller.selectedMood = widget.initialMood;
   }
 
+  // ✅ Método actualizado: guarda con fecha actual si no se pasa ninguna
   Future<void> _saveMood() async {
-    if (controller.selectedMood == null || widget.selectedDate == null) return;
+    // Si no hay emoción elegida, no hacemos nada
+    if (controller.selectedMood == null) return;
 
-    await controller.saveMood(widget.selectedDate!);
+    // Si no viene fecha desde el calendario, usamos la de hoy
+    final date = widget.selectedDate ?? DateTime.now();
 
-    // ✅ Mostrar mensaje de confirmación
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            "✅ Tu estado de ánimo ha sido guardado correctamente",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-          ),
-          backgroundColor: Colors.green.shade600,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+    // Guardar el estado de ánimo
+    await controller.saveMood(date);
+
+    // Mostrar confirmación
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          "✅ Tu estado de ánimo ha sido guardado correctamente",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-      );
-    }
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
 
-    // Espera un poco para mostrar el mensaje antes de cerrar
+    // Esperar un instante para mostrar el mensaje antes de cerrar
     await Future.delayed(const Duration(milliseconds: 800));
 
-    if (mounted) {
-      Navigator.pop(context, controller.selectedMood);
-    }
+    // ✅ Cerramos y devolvemos true para indicar que hubo guardado
+    
   }
 
   @override
