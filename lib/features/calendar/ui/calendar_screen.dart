@@ -31,7 +31,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() => moods = data);
   }
 
- Future<void> _openMoodInput(DateTime date, String? currentMood) async {
+Future<void> _openMoodInput(DateTime date, String? currentMood) async {
   final refreshed = await Navigator.push(
     context,
     MaterialPageRoute(
@@ -42,15 +42,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     ),
   );
 
-  // ✅ Si se devolvió "true" (guardado exitoso), recargamos los moods
   if (refreshed == true) {
     await _loadMoods();
     setState(() {
       _selectedDay = date;
       _focusedDay = date;
     });
+
+    // ✅ Feedback acá (ya en el calendario)
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          "✅ Estado de ánimo actualizado",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 }
+
 
 
   @override
@@ -260,3 +274,4 @@ Expanded(
     );
   }
 }
+

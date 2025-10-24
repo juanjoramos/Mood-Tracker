@@ -63,6 +63,9 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
     await Future.delayed(const Duration(milliseconds: 800));
 
     // ✅ Cerramos y devolvemos true para indicar que hubo guardado
+     if (!mounted) return;
+  // 👇 Volver inmediatamente al calendario, avisando "true" (hubo cambios)
+  Navigator.pop(context, true);
     
   }
 
@@ -216,3 +219,5 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
     );
   }
 }
+
+
