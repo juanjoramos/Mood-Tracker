@@ -34,34 +34,37 @@ class _MoodInputScreenState extends State<MoodInputScreen> {
     controller.selectedMood = widget.initialMood;
   }
 
+  // ✅ Guarda usando hoy si no se pasó fecha.
+  //    Solo hace pop si viniste desde el calendario.
   Future<void> _saveMood() async {
-    if (controller.selectedMood == null || widget.selectedDate == null) return;
+    if (controller.selectedMood == null) return;
 
-    await controller.saveMood(widget.selectedDate!);
+    final date = widget.selectedDate ?? DateTime.now();
+    await controller.saveMood(date);
 
-    // ✅ Mostrar mensaje de confirmación
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text(
-            "✅ Tu estado de ánimo ha sido guardado correctamente",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-          ),
-          backgroundColor: Colors.green.shade600,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+    if (!mounted) return;
+
+    final cameFromCalendar =
+        widget.selectedDate != null && Navigator.of(context).canPop();
+
+    if (cameFromCalendar) {
+      // Venís desde el calendario → volver y avisar que hubo cambios
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    // Estás en la vista principal → quedate y da feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text(
+          "✅ Tu estado de ánimo ha sido guardado correctamente",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
-      );
-    }
-
-    // Espera un poco para mostrar el mensaje antes de cerrar
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    if (mounted) {
-      Navigator.pop(context, controller.selectedMood);
-    }
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
